@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C# Locked Student Assessment Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none; /* Help prevent unauthorized copying during exam lock */
+        }
+        .code-input {
+            font-family: 'Fira Code', monospace;
+            tab-size: 4;
+            user-select: text; /* Allow code editing inside textareas */
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-timer-warning {
+            animation: pulse-red 1s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
+                        <i class="fa-solid fa-lock text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                            C# Assessment Portal
+                            <span class="text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full">30-Min Exam Lock</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">DUT Direct Email Submission System</p>
+                    </div>
+                </div>
+
+                <!-- Mobile Timer Display -->
+                <div class="sm:hidden flex items-center bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i class="fa-solid fa-clock text-amber-400 text-xs mr-2"></i>
+                    <span id="timer-mobile" class="font-mono text-xs font-bold text-slate-200">30:00</span>
+                </div>
+            </div>
+            
+            <div class="hidden sm:flex items-center gap-4 bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-800">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-regular fa-hourglass-half text-indigo-400 animate-spin" style="animation-duration: 8s;"></i>
+                    <span class="text-xs text-slate-400 font-medium">Time Remaining:</span>
+                    <span id="timer-desktop" class="font-mono font-bold text-base text-amber-400 tracking-wider">30:00</span>
+                </div>
+                <div class="h-4 w-px bg-slate-800"></div>
+                <div class="flex items-center space-x-2">
+                    <span id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span id="status-text" class="text-xs font-semibold text-slate-400">Awaiting Registration</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Step 1: Login / Lock Gateway Overlay -->
+        <section id="login-section" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            
+            <div class="max-w-xl mx-auto space-y-6 text-center sm:text-left">
+                <div class="space-y-2">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-medium">
+                        <i class="fa-solid fa-shield-halved text-xs"></i> Official Student Portal Entry
+                    </div>
+                    <h2 class="text-2xl font-black tracking-tight text-white">Student Exam Portal Lockdown</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                        Please enter your full details below to initiate your 30-minute locked assessment. Once started, you will be locked into this session until completion or timer expiry.
+                    </p>
+                </div>
+
+                <div class="space-y-4 pt-2">
+                    <div>
+                        <label for="student-name" class="block text-xs font-medium text-slate-300 mb-1.5 text-left">Full Name & Surname <span class="text-rose-400">*</span></label>
+                        <div class="relative">
+                            <i class="fa-regular fa-user absolute left-3.5 top-3 text-slate-500 text-sm"></i>
+                            <input type="text" id="student-name" placeholder="e.g. Sipho Ndlovu" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="student-id" class="block text-xs font-medium text-slate-300 mb-1.5 text-left">Student Number <span class="text-rose-400">*</span></label>
+                            <div class="relative">
+                                <i class="fa-solid fa-hashtag absolute left-3.5 top-3 text-slate-500 text-sm"></i>
+                                <input type="text" id="student-id" placeholder="e.g. 22019842" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="class-group" class="block text-xs font-medium text-slate-300 mb-1.5 text-left">Class / Group <span class="text-rose-400">*</span></label>
+                            <div class="relative">
+                                <i class="fa-solid fa-users absolute left-3.5 top-3 text-slate-500 text-sm"></i>
+                                <input type="text" id="class-group" placeholder="e.g. ICT Level 2 - Group B" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 text-xs text-amber-300 space-y-1">
+                        <div class="flex items-center gap-2 font-semibold text-amber-200">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Exam Lockdown Terms:
+                        </div>
+                        <ul class="list-disc pl-5 space-y-0.5 text-[11px] text-amber-300/80">
+                            <li>Timer runs for <strong>30 minutes continuous</strong>. Refreshing page will NOT reset time.</li>
+                            <li>Leaving or closing browser early is restricted during lock.</li>
+                            <li>Upon completion or time out, answers automatically compile for <strong>22494175@dut4life.ac.za</strong>.</li>
+                        </ul>
+                    </div>
+
+                    <button onclick="startExamLock()" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition cursor-pointer">
+                        <i class="fa-solid fa-lock-open text-sm"></i>
+                        <span>Lock In & Start C# Assessment (30 Mins)</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Main Locked Assessment Section (Hidden until locked in) -->
+        <div id="assessment-container" class="hidden space-y-6">
+
+            <!-- Active Lockdown Info Header -->
+            <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg">
+                <div class="space-y-0.5">
+                    <div class="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                        Exam In Progress &bull; Session Locked
+                    </div>
+                    <p id="student-display-info" class="text-sm font-semibold text-white">Student: -</p>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-950 px-3.5 py-1.5 rounded-xl border border-slate-800 text-xs text-slate-300">
+                    <i class="fa-solid fa-paper-plane text-indigo-400"></i>
+                    <span>Target Instructor: <strong class="text-indigo-300">22494175@dut4life.ac.za</strong></span>
+                </div>
+            </div>
+
+            <!-- Task 1 -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Question 1</span>
+                        <h3 class="text-sm sm:text-base font-semibold text-white">Void Method / User Greeting</h3>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">10 Marks</span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Write a C# void method named <code class="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs">GreetUser(string name)</code> that accepts a string parameter <code class="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs">name</code> and outputs a greeting message to the screen using <code class="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs">Console.WriteLine()</code>.
+                </p>
+                <textarea id="q1-code" rows="5" class="code-input w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" placeholder="// Write C# code for Question 1 here...&#10;public static void GreetUser(string name) {&#10;    Console.WriteLine($&quot;Hello, {name}! Welcome to C#.&quot;);&#10;}"></textarea>
+            </div>
+
+            <!-- Task 2 -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Question 2</span>
+                        <h3 class="text-sm sm:text-base font-semibold text-white">Time Conversion (Hours & Minutes to Total Minutes)</h3>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">10 Marks</span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Write a C# method <code class="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs">ConvertToMinutes(int hours, int minutes)</code> that calculates and returns the total time converted entirely into integer minutes.
+                </p>
+                <textarea id="q2-code" rows="5" class="code-input w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" placeholder="// Write C# code for Question 2 here...&#10;public static int ConvertToMinutes(int hours, int minutes) {&#10;    return (hours * 60) + minutes;&#10;}"></textarea>
+            </div>
+
+            <!-- Task 3 -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Question 3</span>
+                        <h3 class="text-sm sm:text-base font-semibold text-white">Discount Calculator</h3>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">10 Marks</span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Write a C# method <code class="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs">CalculateDiscount(double price, double discountPercent)</code> that calculates the percentage discount and returns the final discounted price as a double.
+                </p>
+                <textarea id="q3-code" rows="5" class="code-input w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" placeholder="// Write C# code for Question 3 here...&#10;public static double CalculateDiscount(double price, double discountPercent) {&#10;    return price - (price * (discountPercent / 100.0));&#10;}"></textarea>
+            </div>
+
+            <!-- Task 4 -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Question 4</span>
+                        <h3 class="text-sm sm:text-base font-semibold text-white">Find Second Largest Array Element</h3>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">10 Marks</span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Write a C# method <code class="bg-slate-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs">FindSecondLargest(int[] numbers)</code> that iterates over or sorts an array of integers and returns the second largest value in the array.
+                </p>
+                <textarea id="q4-code" rows="5" class="code-input w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" placeholder="// Write C# code for Question 4 here...&#10;public static int FindSecondLargest(int[] numbers) {&#10;    Array.Sort(numbers);&#10;    return numbers[numbers.Length - 2];&#10;}"></textarea>
+            </div>
+
+            <!-- Final Evaluation & Email Dispatch Action -->
+            <div class="pt-2 flex flex-col sm:flex-row justify-end items-center gap-4">
+                <button id="final-submit-btn" onclick="evaluateAndSubmitExam(false)" class="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-xl shadow-emerald-600/20 flex items-center justify-center space-x-2 transition cursor-pointer">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Evaluate & Submit Directly to Instructor</span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Step 3: Evaluation & Email Summary (Shown after submission) -->
+        <section id="results-section" class="hidden bg-slate-900 border border-emerald-500/40 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-5 gap-4">
+                <div>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold mb-2">
+                        <i class="fa-solid fa-circle-check"></i> Assessment Evaluated & Submitted
+                    </span>
+                    <h2 class="text-xl font-extrabold text-white">Grading Breakdown & Submission Log</h2>
+                    <p class="text-xs text-slate-400">Target Email: 22494175@dut4life.ac.za</p>
+                </div>
+                <div class="bg-slate-950 px-6 py-3 rounded-xl border border-slate-800 text-right w-full md:w-auto">
+                    <span class="text-xs text-slate-400 block font-medium">Final Auto-Graded Score</span>
+                    <span id="score-display" class="text-2xl font-black text-emerald-400">0 / 40 (0%)</span>
+                </div>
+            </div>
+
+            <div id="feedback-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+            <div class="bg-slate-950 border border-indigo-500/30 rounded-xl p-4 text-xs text-slate-300 space-y-2">
+                <div class="flex items-center gap-2 font-bold text-indigo-300 text-sm">
+                    <i class="fa-solid fa-envelope-circle-check"></i>
+                    <span>Direct Submission Transmitted</span>
+                </div>
+                <p id="delivery-message" class="text-slate-300 leading-relaxed">
+                    Your default mail application has been prompted with the formatted transcript. Please click <strong>"Send"</strong> in your mail application to complete transmission to instructor <strong>22494175@dut4life.ac.za</strong>.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Modal Window for Warnings -->
+    <div id="modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center space-x-3 text-amber-400">
+                <i class="fa-solid fa-circle-exclamation text-2xl"></i>
+                <h3 id="modal-title" class="font-bold text-base text-white">Exam Lock Notice</h3>
+            </div>
+            <p id="modal-body" class="text-xs sm:text-sm text-slate-300 leading-relaxed"></p>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-white font-medium px-5 py-2 rounded-xl text-xs transition">Understood</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // System Constants
+        const INSTRUCTOR_EMAIL = "22494175@dut4life.ac.za";
+        const TOTAL_EXAM_SECONDS = 30 * 60; // 30 minutes in seconds
+
+        let timerInterval = null;
+        let isExamSubmitted = false;
+
+        // Custom Modal Logic
+        function showModal(title, body) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerText = body;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        // On DOM Content Loaded: Restore ongoing session or set up auto-save
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLock = localStorage.getItem('cs_exam_lock_start');
+            const savedName = localStorage.getItem('cs_exam_student_name');
+            const savedId = localStorage.getItem('cs_exam_student_id');
+            const savedGroup = localStorage.getItem('cs_exam_class_group');
+
+            // Restore Code Auto-Save
+            ['q1-code', 'q2-code', 'q3-code', 'q4-code'].forEach(id => {
+                const savedCode = localStorage.getItem('cs_exam_' + id);
+                if (savedCode) {
+                    document.getElementById(id).value = savedCode;
+                }
+                document.getElementById(id).addEventListener('input', (e) => {
+                    localStorage.setItem('cs_exam_' + id, e.target.value);
+                });
+            });
+
+            // Resume existing exam lock if active and not expired
+            if (savedLock && savedName && savedId) {
+                const elapsedSeconds = Math.floor((Date.now() - parseInt(savedLock, 10)) / 1000);
+                if (elapsedSeconds < TOTAL_EXAM_SECONDS) {
+                    document.getElementById('student-name').value = savedName;
+                    document.getElementById('student-id').value = savedId;
+                    document.getElementById('class-group').value = savedGroup || '';
+                    resumeExamLock(elapsedSeconds);
+                } else {
+                    // Session expired in background
+                    localStorage.removeItem('cs_exam_lock_start');
+                }
+            }
+        });
+
+        // Warn student if attempting to close/leave page during active exam
+        window.addEventListener('beforeunload', (e) => {
+            if (localStorage.getItem('cs_exam_lock_start') && !isExamSubmitted) {
+                e.preventDefault();
+                e.returnValue = 'Exam is currently locked! Leaving now will not pause your 30-minute timer.';
+                return e.returnValue;
+            }
+        });
+
+        // Lock In & Start Exam Function
+        function startExamLock() {
+            const name = document.getElementById('student-name').value.trim();
+            const studentId = document.getElementById('student-id').value.trim();
+            const classGroup = document.getElementById('class-group').value.trim();
+
+            if (!name || !studentId || !classGroup) {
+                showModal('Missing Student Information', 'Please complete your Full Name, Student Number, and Class Group before starting the locked exam.');
+                return;
+            }
+
+            // Save state to localStorage to prevent refresh resets
+            localStorage.setItem('cs_exam_student_name', name);
+            localStorage.setItem('cs_exam_student_id', studentId);
+            localStorage.setItem('cs_exam_class_group', classGroup);
+            localStorage.setItem('cs_exam_lock_start', Date.now().toString());
+
+            resumeExamLock(0);
+        }
+
+        // Resume / Initialize Lock Display & Countdown
+        function resumeExamLock(elapsedSecondsAlready) {
+            const name = localStorage.getItem('cs_exam_student_name');
+            const studentId = localStorage.getItem('cs_exam_student_id');
+            const classGroup = localStorage.getItem('cs_exam_class_group');
+
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('assessment-container').classList.remove('hidden');
+            document.getElementById('student-display-info').innerText = `Student: ${name} (${studentId}) | Class: ${classGroup}`;
+
+            document.getElementById('status-indicator').className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+            document.getElementById('status-text').innerText = "Locked Exam Active";
+            document.getElementById('status-text').className = "text-xs font-semibold text-emerald-400";
+
+            let remainingSeconds = TOTAL_EXAM_SECONDS - elapsedSecondsAlready;
+            updateTimerDisplay(remainingSeconds);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                remainingSeconds--;
+                updateTimerDisplay(remainingSeconds);
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    showModal('Time Expired!', 'Your 30 minutes are up. The portal is evaluating your solutions and submitting automatically now.');
+                    evaluateAndSubmitExam(true);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(seconds) {
+            if (seconds < 0) seconds = 0;
+            const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const secs = String(seconds % 60).padStart(2, '0');
+            const timerString = `${mins}:${secs}`;
+
+            document.getElementById('timer-desktop').innerText = timerString;
+            document.getElementById('timer-mobile').innerText = timerString;
+
+            if (seconds <= 300) { // Last 5 minutes warning styling
+                document.getElementById('timer-desktop').className = "font-mono font-bold text-base text-rose-400 animate-timer-warning tracking-wider";
+                document.getElementById('timer-mobile').className = "font-mono text-xs font-bold text-rose-400 animate-timer-warning";
+            }
+        }
+
+        // Evaluate Syntax/Rubric & Trigger Mailto Dispatch
+        function evaluateAndSubmitExam(isAutoSubmit) {
+            const name = localStorage.getItem('cs_exam_student_name') || document.getElementById('student-name').value.trim();
+            const studentId = localStorage.getItem('cs_exam_student_id') || document.getElementById('student-id').value.trim();
+            const classGroup = localStorage.getItem('cs_exam_class_group') || document.getElementById('class-group').value.trim();
+
+            const q1 = document.getElementById('q1-code').value.trim();
+            const q2 = document.getElementById('q2-code').value.trim();
+            const q3 = document.getElementById('q3-code').value.trim();
+            const q4 = document.getElementById('q4-code').value.trim();
+
+            if (!isAutoSubmit && (!q1 || !q2 || !q3 || !q4)) {
+                showModal('Incomplete Solutions', 'Please provide C# code entries for all 4 questions before submitting your assessment.');
+                return;
+            }
+
+            isExamSubmitted = true;
+            clearInterval(timerInterval);
+
+            // Static Rubric Evaluation (40 Marks Total)
+            const rubricRules = [
+                {
+                    id: 1,
+                    title: 'Q1: Void Method / User Greeting',
+                    maxMarks: 10,
+                    code: q1,
+                    checks: [
+                        { regex: /void/i, weight: 3, desc: 'Includes void return type signature' },
+                        { regex: /GreetUser/i, weight: 3, desc: 'Includes GreetUser method name' },
+                        { regex: /Console\.Write/i, weight: 4, desc: 'Outputs greeting message using Console' }
+                    ]
+                },
+                {
+                    id: 2,
+                    title: 'Q2: Time Conversion (Hours & Mins to Mins)',
+                    maxMarks: 10,
+                    code: q2,
+                    checks: [
+                        { regex: /ConvertToMinutes|int/i, weight: 3, desc: 'Method signature returns integer' },
+                        { regex: /\*|60/i, weight: 4, desc: 'Multiplies hours by 60' },
+                        { regex: /\+|\breturn\b/i, weight: 3, desc: 'Adds remaining minutes and returns total' }
+                    ]
+                },
+                {
+                    id: 3,
+                    title: 'Q3: Discount Calculator',
+                    maxMarks: 10,
+                    code: q3,
+                    checks: [
+                        { regex: /CalculateDiscount|double/i, weight: 3, desc: 'Returns double value type signature' },
+                        { regex: /\/|100|0\./i, weight: 4, desc: 'Calculates discount math percentage' },
+                        { regex: /-|\breturn\b/i, weight: 3, desc: 'Subtracts discount from total price and returns' }
+                    ]
+                },
+                {
+                    id: 4,
+                    title: 'Q4: Find Second Largest Array Element',
+                    maxMarks: 10,
+                    code: q4,
+                    checks: [
+                        { regex: /\[\]/i, weight: 3, desc: 'Accepts integer array parameter' },
+                        { regex: /Sort|for|foreach|while|Order/i, weight: 4, desc: 'Implements sorting or iterative comparison' },
+                        { regex: /Length|2|\breturn\b/i, weight: 3, desc: 'Extracts and returns 2nd largest value' }
+                    ]
+                }
+            ];
+
+            let totalMarksObtained = 0;
+            let feedbackHtml = '';
+
+            rubricRules.forEach(item => {
+                let qMarks = 0;
+                let qFeedback = [];
+
+                item.checks.forEach(check => {
+                    if (check.regex.test(item.code)) {
+                        qMarks += check.weight;
+                        qFeedback.push(`<li class="text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-check text-[10px]"></i> ${check.desc} (+${check.weight})</li>`);
+                    } else {
+                        qFeedback.push(`<li class="text-rose-400 flex items-center gap-1.5"><i class="fa-solid fa-xmark text-[10px]"></i> Missing: ${check.desc} (0/${check.weight})</li>`);
+                    }
+                });
+
+                totalMarksObtained += qMarks;
+
+                feedbackHtml += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold text-slate-200">${item.title}</h4>
+                            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded ${qMarks >= 7 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${qMarks} / ${item.maxMarks} Marks</span>
+                        </div>
+                        <ul class="text-xs space-y-1 pl-1">
+                            ${qFeedback.join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+
+            const scorePercent = Math.round((totalMarksObtained / 40) * 100);
+
+            // Display UI Score & Feedback
+            document.getElementById('score-display').innerText = `${totalMarksObtained} / 40 Marks (${scorePercent}%)`;
+            document.getElementById('feedback-container').innerHTML = feedbackHtml;
+            document.getElementById('results-section').classList.remove('hidden');
+
+            // Format Email Transcript
+            const subjectHeader = `[C# Assessment] ${name} - ${studentId} - Score: ${totalMarksObtained}/40 (${scorePercent}%)`;
+            const now = new Date();
+
+            const emailBodyText = 
+`C# STUDENT ASSESSMENT TRANSCRIPT
+====================================================================
+Date / Time   : ${now.toLocaleString()}
+Student Name  : ${name}
+Student ID    : ${studentId}
+Class / Group : ${classGroup}
+Overall Score : ${totalMarksObtained} / 40 Marks (${scorePercent}%)
+Target Email  : ${INSTRUCTOR_EMAIL}
+====================================================================
+
+[SUBMITTED CODE SOLUTIONS]
+
+--- QUESTION 1: Void Method / User Greeting ---
+${q1 || '(No response provided)'}
+
+--- QUESTION 2: Time Conversion ---
+${q2 || '(No response provided)'}
+
+--- QUESTION 3: Discount Calculator ---
+${q3 || '(No response provided)'}
+
+--- QUESTION 4: Find Second Largest Array Element ---
+${q4 || '(No response provided)'}
+
+====================================================================
+Automated C# Assessment Portal Submission.`;
+
+            // Trigger Mailto URL Client Dispatch
+            const mailtoUrl = `mailto:${INSTRUCTOR_EMAIL}?subject=${encodeURIComponent(subjectHeader)}&body=${encodeURIComponent(emailBodyText)}`;
+
+            document.getElementById('delivery-message').innerHTML = `
+                Assessment transcript generated for student <strong>${name} (${studentId})</strong>.<br>
+                Opening your device default email client addressed to <strong>${INSTRUCTOR_EMAIL}</strong> with pre-filled subject: <br>
+                <code class="text-indigo-300 font-mono text-[11px]">${subjectHeader}</code><br>
+                <span class="text-emerald-400 font-medium mt-1 inline-block"><i class="fa-solid fa-circle-info"></i> Please tap "Send" in your mail app to complete your final submission.</span>
+            `;
+
+            // Clear exam lock from local storage upon valid submission
+            localStorage.removeItem('cs_exam_lock_start');
+
+            // Redirect to mail client
+            window.location.href = mailtoUrl;
+
+            // Scroll down to view result breakdown
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
